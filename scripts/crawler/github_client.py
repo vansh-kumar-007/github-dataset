@@ -123,3 +123,37 @@ class GitHubClient:
             return remaining
 
         return None
+    
+    
+def wait_if_rate_limited(self, minimum_remaining=100):
+        """
+        Checks our remaining API calls and pauses automatically
+        if we're running low, instead of hitting errors.
+
+        Arguments:
+            minimum_remaining: pause if we have fewer than this
+                               many requests left (default 100)
+        """
+
+        data = self.get("/rate_limit")
+
+        if not data:
+            return
+
+        core = data["resources"]["core"]
+        remaining = core["remaining"]
+        reset_time = core["reset"]
+
+        if remaining < minimum_remaining:
+            import time as time_module
+            # Calculate how many seconds until the limit resets
+            wait_seconds = reset_time - time_module.time()
+            wait_seconds = max(wait_seconds, 0) + 10  # add 10s buffer
+
+            logger.warning(
+                f"Rate limit low ({remaining} remaining). "
+                f"Pausing {wait_seconds:.0f} seconds until reset..."
+            )
+            time_module.sleep(wait_seconds)
+        else:
+            logger.info(f"Rate limit OK: {remaining}/5000 remaining")
