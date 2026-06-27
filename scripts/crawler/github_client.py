@@ -81,6 +81,11 @@ class GitHubClient:
                 logger.warning(f"Rate limit hit on {endpoint}. Waiting 60 seconds...")
                 time.sleep(60)
                 return None
+            
+            elif response.status_code == 404:
+                # 404 means "not found" — the repository or file doesn't exist
+                logger.debug(f"Not found: {endpoint}")
+                return None
 
             elif response.status_code == 429:
                 # 429 means we're sending requests too fast (secondary rate limit)

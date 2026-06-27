@@ -85,6 +85,18 @@ def initialize_database():
             processed_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    
+    # Table 4: Tracks every file fetch attempt (found or not found)
+    # This prevents us from re-attempting files we already know don't exist
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fetch_attempts (
+            repo_full_name  VARCHAR,
+            file_name       VARCHAR,
+            found           BOOLEAN,
+            attempted_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (repo_full_name, file_name)
+        )
+    """)
 
     conn.close()
     logger.info(f"Database ready at: {DB_PATH}")
@@ -202,3 +214,38 @@ def get_statistics():
     conn.close()
 
     return {"repositories": repos, "documentation_files": docs, "completed": done}
+
+
+def record_fetch_attempt(repo_full_name, file_name, found):
+    """
+    Records that we attempted to fetch a specific file,
+    whether or not we found it. This way we never attempt
+    the same file twice for the same repository.
+    """
+    conn = get_connection()
+    try:
+        conn.execute("""
+            INSERT OR REPLACE INTO fetch_attempts
+            (repo_full_name, file_name, found)
+            VALUES (?, ?, ?)
+        """, [repo_full_name, file_name, found])
+        conn.close()
+    except Exception as e:
+        logger.error(f"Failed to record fetch attempt: {e}")
+        conn.close()
+
+
+def was_fetch_attempted(repo_full_name, file_name):
+    """
+    Returns True if we already tried fetching this file
+    for this repository, regardless of whether we found it.
+    """
+    conn = get_connection()
+    result = conn.execute(
+        """SELECT COUNT(*) FROM fetch_attempts
+           WHERE repo_full_name = ? AND file_name = ?""",
+        [repo_full_name, file_name]
+    ).fetchone()
+    conn.close()
+    return result[0] > 0
+
