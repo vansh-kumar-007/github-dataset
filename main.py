@@ -96,29 +96,23 @@ def main():
     logger.info("Step 1/3 — Initializing database")
     initialize_database()
 
-    # Step 2: Crawl repositories (unless --docs-only was specified)
-    if not args.docs_only:
+    # Step 2: Crawl repositories (unless --docs-only, --export-only, or --no-crawl)
+    if not args.docs_only and not args.export:
         logger.info("Step 2/3 — Crawling GitHub for repositories")
-
         if args.diverse:
-            # Use the multi-query diverse strategy
             from scripts.crawler.repo_crawler import run_diverse_crawler
             run_diverse_crawler(total_repos=args.repos or 1000)
         else:
-            # Use the simple single-query strategy
-            run_crawler(
-                query=args.query,
-                max_repos=args.repos,
-            )
+            run_crawler(query=args.query, max_repos=args.repos)
     else:
-        logger.info("Step 2/3 — Skipping crawl (--docs-only mode)")
+        logger.info("Step 2/3 — Skipping crawl")
 
-    # Step 3: Fetch documentation files (unless --no-docs was specified)
-    if not args.no_docs:
+    # Step 3: Fetch documentation (unless --no-docs or --export alone)
+    if not args.no_docs and not args.export:
         logger.info("Step 3/3 — Fetching documentation files")
         run_doc_fetcher()
     else:
-        logger.info("Step 3/3 — Skipping documentation fetch (--no-docs mode)")
+        logger.info("Step 3/3 — Skipping documentation fetch")
         
         
     # Optional: export to Parquet

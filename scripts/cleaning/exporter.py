@@ -23,48 +23,82 @@ def get_connection():
 
 def compute_readme_quality_score(content):
     """
-    Gives each README a simple quality score from 0 to 100.
-    This is the "added value" feature that makes our dataset
-    more useful than a plain file dump.
+    Gives each README a quality score from 0 to 100.
 
-    We check for the presence of useful sections that indicate
-    a well-documented project. Each feature adds points.
+    Version 2 — calibrated to produce a proper distribution
+    rather than clustering everything at the top.
+
+    Scoring is additive across several dimensions, each capped
+    so no single dimension can dominate the total.
     """
 
     if not content:
         return 0
 
     content_lower = content.lower()
-    score = 0
+    lines  = content.split("\n")
+    score  = 0
 
-    # Length — longer READMEs tend to be more complete
-    if len(content) > 500:   score += 10
-    if len(content) > 1000:  score += 10
-    if len(content) > 3000:  score += 10
+    # --- Dimension 1: Length (max 20 points, gradual scale) ---
+    length = len(content)
+    if length > 200:    score += 4
+    if length > 500:    score += 4
+    if length > 1500:   score += 4
+    if length > 4000:   score += 4
+    if length > 10000:  score += 4
 
-    # Has a code example (backtick blocks)
-    if "```" in content:
-        score += 15
+    # --- Dimension 2: Structure — markdown headers (max 15 points) ---
+    # Count lines that start with # (markdown headers)
+    header_lines = [l for l in lines if l.strip().startswith("#")]
+    num_headers = len(header_lines)
+    if num_headers >= 1:  score += 3
+    if num_headers >= 3:  score += 4
+    if num_headers >= 6:  score += 4
+    if num_headers >= 10: score += 4
 
-    # Has an installation section
-    if any(w in content_lower for w in ["install", "installation", "getting started"]):
-        score += 15
+    # --- Dimension 3: Code examples (max 20 points) ---
+    # Count how many code blocks exist (pairs of ```)
+    code_block_count = content.count("```") // 2
+    if code_block_count >= 1:  score += 7
+    if code_block_count >= 3:  score += 6
+    if code_block_count >= 6:  score += 7
 
-    # Has a usage section
-    if any(w in content_lower for w in ["usage", "how to use", "example", "quickstart"]):
-        score += 10
+    # --- Dimension 4: Key documentation sections (max 25 points) ---
+    # Each section is worth points — having more sections is better
+    sections = {
+        "installation":  any(w in content_lower for w in ["install", "getting started", "prerequisites"]),
+        "usage":         any(w in content_lower for w in ["usage", "how to use", "quickstart", "quick start"]),
+        "examples":      any(w in content_lower for w in ["example", "demo", "screenshot"]),
+        "contributing":  any(w in content_lower for w in ["contribut", "pull request", "open an issue"]),
+        "license":       any(w in content_lower for w in ["license", "licence", "mit ", "apache", "gpl"]),
+    }
+    section_count = sum(sections.values())
+    score += section_count * 5  # 5 points per section, max 25
 
-    # Has a contributing section
-    if any(w in content_lower for w in ["contribut", "pull request", "open an issue"]):
-        score += 10
+    # --- Dimension 5: Links and references (max 10 points) ---
+    # Well-documented projects link to docs, CI badges, etc.
+    link_count = content.count("](")  # markdown link syntax
+    if link_count >= 2:   score += 4
+    if link_count >= 10:  score += 3
+    if link_count >= 25:  score += 3
 
-    # Has a license mention
-    if any(w in content_lower for w in ["license", "licence", "mit", "apache", "gpl"]):
-        score += 10
+    # --- Dimension 6: Badges (max 5 points) ---
+    # Badges indicate active maintenance (CI, coverage, version)
+    badge_count = content.count("[![")
+    if badge_count >= 1:  score += 2
+    if badge_count >= 3:  score += 3
 
-    # Has badges (common in well-maintained repos)
-    if "![" in content or "[![" in content:
-        score += 10
+    # --- Penalties ---
+    # Very short content that somehow passed other checks
+    if length < 100:
+        score = min(score, 10)
+
+    # Suspiciously repetitive content (spam/auto-generated)
+    # If the unique lines are less than 40% of total lines, penalize
+    if len(lines) > 10:
+        unique_ratio = len(set(lines)) / len(lines)
+        if unique_ratio < 0.4:
+            score = int(score * 0.6)
 
     return min(score, 100)
 
