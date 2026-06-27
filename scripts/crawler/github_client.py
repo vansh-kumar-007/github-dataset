@@ -77,14 +77,17 @@ class GitHubClient:
                 return response.json()
 
             elif response.status_code == 403:
-                # 403 means we've hit the rate limit — we're asking too fast
+                # 403 means we've hit the hourly rate limit
                 logger.warning(f"Rate limit hit on {endpoint}. Waiting 60 seconds...")
                 time.sleep(60)
                 return None
 
-            elif response.status_code == 404:
-                # 404 means "not found" — the repository or file doesn't exist
-                logger.debug(f"Not found: {endpoint}")
+            elif response.status_code == 429:
+                # 429 means we're sending requests too fast (secondary rate limit)
+                # GitHub asks us to slow down — we wait longer and try again
+                retry_after = int(response.headers.get("Retry-After", "60"))
+                logger.warning(f"Secondary rate limit hit. Waiting {retry_after} seconds...")
+                time.sleep(retry_after)
                 return None
 
             else:
