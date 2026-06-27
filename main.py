@@ -61,6 +61,12 @@ def parse_arguments():
         action="store_true",
         help="Use multi-language search strategy for a balanced dataset"
     )
+    
+    parser.add_argument(
+        "--export",
+        action="store_true",
+        help="Export database to Parquet files in the exports/ folder"
+    )
 
     return parser.parse_args()
 
@@ -113,6 +119,13 @@ def main():
         run_doc_fetcher()
     else:
         logger.info("Step 3/3 — Skipping documentation fetch (--no-docs mode)")
+        
+        
+    # Optional: export to Parquet
+    if args.export:
+        logger.info("Exporting to Parquet files...")
+        from scripts.cleaning.exporter import run_export
+        run_export()
 
     # Final summary
     stats = get_statistics()
