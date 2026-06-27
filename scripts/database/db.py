@@ -120,10 +120,16 @@ def save_repository(repo_data):
 
     try:
         conn.execute("""
-            INSERT OR REPLACE INTO repositories
+            INSERT INTO repositories
             (id, name, owner, full_name, description, stars, forks,
              language, license, created_at, updated_at, topics, archived, repo_url)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (full_name) DO UPDATE SET
+                stars      = EXCLUDED.stars,
+                forks      = EXCLUDED.forks,
+                updated_at = EXCLUDED.updated_at,
+                topics     = EXCLUDED.topics,
+                archived   = EXCLUDED.archived
         """, [
             repo_data["id"],
             repo_data["name"],
