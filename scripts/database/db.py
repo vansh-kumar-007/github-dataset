@@ -62,9 +62,11 @@ def initialize_database():
 
     # Table 2: Documentation files
     # Stores the actual content of README, LICENSE, etc.
+    # We use SEQUENCE to auto-generate a unique id for each row
+    conn.execute("CREATE SEQUENCE IF NOT EXISTS doc_id_seq START 1")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS documentation (
-            id              INTEGER PRIMARY KEY,
+            id              INTEGER PRIMARY KEY DEFAULT nextval('doc_id_seq'),
             repo_full_name  VARCHAR,
             file_name       VARCHAR,
             content         VARCHAR,
@@ -172,8 +174,8 @@ def save_documentation(repo_full_name, file_name, content):
 
     try:
         conn.execute("""
-            INSERT INTO documentation (repo_full_name, file_name, content, file_size)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO documentation (id, repo_full_name, file_name, content, file_size)
+            VALUES (nextval('doc_id_seq'), ?, ?, ?, ?)
         """, [repo_full_name, file_name, content, len(content)])
 
         conn.close()
