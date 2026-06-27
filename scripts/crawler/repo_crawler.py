@@ -189,3 +189,62 @@ def run_crawler(query=None, max_repos=None):
     stats = get_statistics()
     logger.info(f"Crawl complete — collected: {collected}, skipped: {skipped}")
     logger.info(f"Database totals: {stats}")
+    
+    
+def run_diverse_crawler(total_repos=1000):
+    """
+    Runs the crawler using our multi-query search strategy
+    to collect a diverse, balanced dataset.
+
+    Instead of one search that favors mega-popular repos,
+    this runs many targeted searches across languages and
+    star ranges to get variety.
+
+    Arguments:
+        total_repos: total number of repositories to collect
+                     spread across all language/star combinations
+    """
+
+    from scripts.crawler.search_strategy import (
+        build_search_queries,
+        calculate_target_per_query,
+    )
+
+    # Make sure the database is ready
+    initialize_database()
+
+    # Build our list of targeted search queries
+    queries = build_search_queries()
+
+    # Calculate how many repos to collect per query
+    per_query = calculate_target_per_query(total_repos, queries)
+
+    logger.info(f"Starting diverse crawl — target: {total_repos} total repositories")
+
+    grand_total = 0
+
+    # Run each targeted search one by one
+    for i, (query, label) in enumerate(queries, start=1):
+
+        logger.info(f"Query {i}/{len(queries)}: {label}")
+
+        # Count how many we've already collected before this query
+        before = get_statistics()["repositories"]
+
+        # Run the standard crawler with this specific query
+        run_crawler(query=query, max_repos=per_query)
+
+        # Count how many we collected during this query
+        after = get_statistics()["repositories"]
+        gained = after - before
+        grand_total += gained
+
+        logger.info(f"Query {label} complete — gained {gained} repos "
+                    f"(total so far: {after})")
+
+        # Stop early if we've somehow reached the total target
+        if after >= total_repos:
+            logger.info("Reached total target — stopping early")
+            break
+
+    logger.info(f"Diverse crawl complete — total repositories: {grand_total}")

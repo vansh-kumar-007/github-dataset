@@ -67,3 +67,38 @@ LOGS_DIR = os.path.join(ROOT_DIR, "logs")
 
 # Where final Parquet exports go
 EXPORTS_DIR = os.path.join(ROOT_DIR, "exports")
+
+
+# --- Search Strategy ---
+# Instead of one big search, we search in targeted slices
+# to get a diverse, balanced dataset across languages and sizes.
+
+# Languages to collect — covers the most widely used languages
+# while ensuring good variety in the dataset
+SEARCH_LANGUAGES = [
+    "Python",
+    "JavaScript",
+    "TypeScript",
+    "Java",
+    "Go",
+    "Rust",
+    "C++",
+    "C",
+    "Ruby",
+    "PHP",
+    "Swift",
+    "Kotlin",
+    "Shell",
+    "HTML",
+    "CSS",
+]
+
+# Star ranges define repository "size tiers"
+# Each tuple is (minimum_stars, maximum_stars, label)
+# We search each language within each tier
+STAR_RANGES = [
+    (50,    200,   "emerging"),      # small but active projects
+    (200,   1000,  "established"),   # solid mid-size projects
+    (1000,  5000,  "popular"),       # well-known projects
+    (5000,  50000, "very_popular"),  # major projects
+]

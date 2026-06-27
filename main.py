@@ -55,6 +55,12 @@ def parse_arguments():
         action="store_true",
         help="Skip crawling and only fetch docs for repos already in database"
     )
+    
+    parser.add_argument(
+        "--diverse",
+        action="store_true",
+        help="Use multi-language search strategy for a balanced dataset"
+    )
 
     return parser.parse_args()
 
@@ -87,10 +93,17 @@ def main():
     # Step 2: Crawl repositories (unless --docs-only was specified)
     if not args.docs_only:
         logger.info("Step 2/3 — Crawling GitHub for repositories")
-        run_crawler(
-            query=args.query,
-            max_repos=args.repos,
-        )
+
+        if args.diverse:
+            # Use the multi-query diverse strategy
+            from scripts.crawler.repo_crawler import run_diverse_crawler
+            run_diverse_crawler(total_repos=args.repos or 1000)
+        else:
+            # Use the simple single-query strategy
+            run_crawler(
+                query=args.query,
+                max_repos=args.repos,
+            )
     else:
         logger.info("Step 2/3 — Skipping crawl (--docs-only mode)")
 
